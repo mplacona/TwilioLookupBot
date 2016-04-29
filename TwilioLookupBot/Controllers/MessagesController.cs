@@ -1,13 +1,9 @@
 ﻿using System;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
-using System.Web.Http.Description;
 using Microsoft.Bot.Connector;
 using Microsoft.Bot.Connector.Utilities;
-using Newtonsoft.Json;
+using TwilioLookupBot.Services;
 
 namespace TwilioLookupBot
 {
@@ -20,14 +16,29 @@ namespace TwilioLookupBot
         /// </summary>
         public async Task<Message> Post([FromBody]Message message)
         {
-            if (message.Type == "Message")
-            {
-                // calculate something for us to return
-                int length = (message.Text ?? string.Empty).Length;
+if (message.Type == "Message")
+{
+    // Get number information
+    var numberLookup = TwilioLookupService.GetNumberInfo(message.Text);
 
-                // return our reply to the user
-                return message.CreateReplyMessage($"You sent {length} characters");
-            }
+    // Check if the number entered is valid
+    if (numberLookup.RestException != null)
+    {
+        return message.CreateReplyMessage("You entered an invalid phone number");
+    }
+
+    // Build a response using Markdown
+    var response =
+        $"The number **{numberLookup.NationalFormat}** has the following details:" +
+        $"{Environment.NewLine}{Environment.NewLine}" +
+        $"**Carrier:** {numberLookup.Carrier.Name}" +
+        $"{Environment.NewLine}{Environment.NewLine}" +
+        $"**Country Code:** {numberLookup.CountryCode}" +
+        $"{Environment.NewLine}{Environment.NewLine}" +
+        $"**Type:** {numberLookup.Carrier.Type}";
+                
+    return message.CreateReplyMessage(response);
+}
             else
             {
                 return HandleSystemMessage(message);
